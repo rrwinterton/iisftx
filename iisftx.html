@@ -4,77 +4,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Transfer to Server</title>
+    <title>IIS File Transfer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-main: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --track-bg: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 30px;
-            background-color: #f8fafc;
-            color: #1e293b;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-server {
+            background: rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .badge-secure {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .badge-secure.https {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .badge-secure.http {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+        }
+
+        .badge-secure.http:hover {
+            background: rgba(245, 158, 11, 0.35);
         }
 
         .card {
-            max-width: 760px;
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
         }
 
-        .upload-container {
+        /* HTTPS Notice Banner if on HTTP */
+        .https-banner {
+            display: none;
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #fbbf24;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .https-banner a {
+            color: #60a5fa;
+            text-decoration: underline;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(15, 23, 42, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            transform: scale(1.01);
+        }
+
+        .drop-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: #60a5fa;
+        }
+
+        .drop-text {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .drop-subtext {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .selected-file-info {
+            display: none;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 400px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .btn-remove {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .btn-remove:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .action-bar {
             display: flex;
             gap: 12px;
-            margin: 20px 0 10px 0;
             align-items: center;
         }
 
-        input[type="file"] {
+        .btn-primary {
             flex: 1;
-            border: 1px solid #cbd5e1;
-            padding: 9px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        button#btnDownload {
-            background: #2563eb;
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: 500;
-            font-size: 14px;
-            transition: background 0.15s ease;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
-        button#btnDownload:hover {
-            background: #1d4ed8;
+        .btn-primary:hover {
+            background: var(--primary-hover);
         }
 
-        button#btnDownload:disabled {
-            background: #94a3b8;
+        .btn-primary:disabled {
+            background: #475569;
+            box-shadow: none;
             cursor: not-allowed;
+            opacity: 0.6;
         }
 
-        /* Progress Bar Styles */
+        /* Progress Bar */
         .progress-wrapper {
             display: none;
-            margin: 14px 0 10px 0;
+            margin: 20px 0 10px 0;
         }
 
         .progress-header {
             display: flex;
             justify-content: space-between;
             font-size: 13px;
-            margin-bottom: 6px;
-            color: #475569;
+            margin-bottom: 8px;
+            color: var(--text-muted);
             font-weight: 500;
         }
 
         .progress-track {
-            background-color: #e2e8f0;
-            border-radius: 8px;
+            background-color: var(--track-bg);
+            border-radius: 9999px;
             height: 10px;
             overflow: hidden;
         }
@@ -83,20 +281,30 @@
             width: 0%;
             height: 100%;
             background: linear-gradient(90deg, #2563eb, #38bdf8);
-            border-radius: 8px;
-            transition: width 0.1s ease;
+            border-radius: 9999px;
+            transition: width 0.1s linear;
         }
 
-        #statusMessage {
+        .status-message {
             font-size: 14px;
             font-weight: 500;
-            margin: 10px 0 25px 0;
+            margin-top: 14px;
             min-height: 20px;
+            line-height: 1.5;
         }
 
-        /* History Table Styles */
+        .status-success {
+            color: #34d399;
+        }
+
+        .status-error {
+            color: #f87171;
+        }
+
+        /* History Table */
         .history-section {
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--card-border);
+            margin-top: 28px;
             padding-top: 20px;
         }
 
@@ -104,28 +312,25 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .history-title {
             font-size: 16px;
             font-weight: 600;
-            margin: 0;
-            color: #0f172a;
         }
 
         .clear-btn {
             background: none;
             border: none;
-            color: #64748b;
-            font-size: 12px;
+            color: var(--text-muted);
+            font-size: 13px;
             cursor: pointer;
             text-decoration: underline;
-            padding: 0;
         }
 
         .clear-btn:hover {
-            color: #0f172a;
+            color: var(--text-main);
         }
 
         .history-table {
@@ -136,112 +341,242 @@
 
         .history-table th {
             text-align: left;
-            padding: 8px 12px;
-            background-color: #f1f5f9;
-            color: #475569;
+            padding: 10px 12px;
+            background-color: rgba(15, 23, 42, 0.6);
+            color: var(--text-muted);
             font-weight: 600;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--card-border);
         }
 
         .history-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #f1f5f9;
-            color: #334155;
+            padding: 12px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+            color: var(--text-main);
             vertical-align: middle;
         }
 
-        .history-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .empty-history {
-            text-align: center;
-            color: #94a3b8;
-            padding: 20px;
-            font-style: italic;
-        }
-
-        /* Status Badges */
         .badge {
             display: inline-block;
-            padding: 3px 9px;
-            border-radius: 12px;
+            padding: 3px 10px;
+            border-radius: 9999px;
             font-size: 12px;
             font-weight: 600;
         }
 
         .badge-success {
-            background-color: #dcfce7;
-            color: #15803d;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .badge-failed {
-            background-color: #fee2e2;
-            color: #b91c1c;
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
         .badge-pending {
-            background-color: #e0f2fe;
-            color: #0369a1;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .empty-history {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 24px;
+            font-style: italic;
         }
     </style>
 </head>
 
 <body>
-    <div class="card">
-        <h2>Select a File to Transfer</h2>
-
-        <div class="upload-container">
-            <input type="file" id="fileInput">
-            <button id="btnDownload" onclick="transferFile()">Download</button>
-        </div>
-
-        <!-- Live Progress Indicator -->
-        <div class="progress-wrapper" id="progressWrapper">
-            <div class="progress-header">
-                <span id="progressPercent">0%</span>
-                <span id="progressDetails">0 B / 0 B</span>
-            </div>
-            <div class="progress-track">
-                <div class="progress-bar" id="progressBar"></div>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 IIS File Transfer</h1>
+            <div class="header-badges">
+                <span class="badge-server">Max 2 GB</span>
+                <span id="securityBadge" class="badge-secure https">🔒 Checking Connection...</span>
             </div>
         </div>
 
-        <p id="statusMessage"></p>
-
-        <div class="history-section">
-            <div class="history-header">
-                <h3 class="history-title">Transfer History</h3>
-                <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+        <div class="card">
+            <!-- HTTPS Notice Banner (shown if visited on HTTP) -->
+            <div class="https-banner" id="httpsBanner">
+                <span>⚠️ You are connected via <strong>HTTP (Unencrypted)</strong>.</span>
+                <a href="#" id="httpsSwitchLink">Switch to Secure HTTPS (Port 443) →</a>
             </div>
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th style="width: 85px;">Time</th>
-                        <th>File Name</th>
-                        <th style="width: 75px;">Size</th>
-                        <th style="width: 95px;">Status</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody id="historyBody">
-                    <tr id="emptyRow">
-                        <td colspan="5" class="empty-history">No transfers recorded yet.</td>
-                    </tr>
-                </tbody>
-            </table>
+
+            <!-- Drag and Drop Zone -->
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="drop-icon">📁</div>
+                <div class="drop-text">Drag & drop a file here, or click to browse</div>
+                <div class="drop-subtext">Supports single files up to 2 GB</div>
+            </div>
+
+            <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect(event)">
+
+            <!-- Selected File Card -->
+            <div class="selected-file-info" id="selectedFileInfo">
+                <div class="file-details">
+                    <span>📄</span>
+                    <div>
+                        <div class="file-name" id="selectedFileName">filename.ext</div>
+                        <div class="file-size" id="selectedFileSize">0 MB</div>
+                    </div>
+                </div>
+                <button class="btn-remove" onclick="removeSelectedFile()">Remove</button>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <button class="btn-primary" id="btnUpload" onclick="transferFile()" disabled>Start Transfer</button>
+            </div>
+
+            <!-- Live Progress Bar -->
+            <div class="progress-wrapper" id="progressWrapper">
+                <div class="progress-header">
+                    <span id="progressPercent">0%</span>
+                    <span id="progressDetails">0 B / 0 B • 0 MB/s</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+
+            <!-- Status Message -->
+            <p class="status-message" id="statusMessage"></p>
+
+            <!-- Transfer History -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h3 class="history-title">Transfer History</h3>
+                    <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+                </div>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">Time</th>
+                            <th>File Name</th>
+                            <th style="width: 85px;">Size</th>
+                            <th style="width: 100px;">Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr id="emptyRow">
+                            <td colspan="5" class="empty-history">No transfers recorded yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
         const MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB limit
+        let selectedFile = null;
+        let uploadStartTime = 0;
+        let lastLoaded = 0;
+        let lastTime = 0;
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFileInfo = document.getElementById('selectedFileInfo');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const selectedFileSize = document.getElementById('selectedFileSize');
+        const btnUpload = document.getElementById('btnUpload');
+        const statusMessage = document.getElementById('statusMessage');
+        const progressWrapper = document.getElementById('progressWrapper');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressDetails = document.getElementById('progressDetails');
+        const securityBadge = document.getElementById('securityBadge');
+        const httpsBanner = document.getElementById('httpsBanner');
+        const httpsSwitchLink = document.getElementById('httpsSwitchLink');
+
+        // Check Connection Security (HTTP vs HTTPS)
+        function updateSecurityStatus() {
+            const isHttps = window.location.protocol === 'https:';
+            if (isHttps) {
+                securityBadge.className = 'badge-secure https';
+                securityBadge.innerHTML = '🔒 HTTPS Secure (TLS)';
+                httpsBanner.style.display = 'none';
+            } else {
+                securityBadge.className = 'badge-secure http';
+                securityBadge.innerHTML = '⚠️ HTTP (Unsecured)';
+                httpsBanner.style.display = 'flex';
+                const httpsUrl = 'https://' + window.location.hostname + (window.location.port === '80' || !window.location.port ? '' : '') + window.location.pathname;
+                httpsSwitchLink.href = httpsUrl;
+                securityBadge.onclick = () => { window.location.href = httpsUrl; };
+            }
+        }
+        updateSecurityStatus();
+
+        // Drag and drop listeners
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                setFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            if (event.target.files && event.target.files.length > 0) {
+                setFile(event.target.files[0]);
+            }
+        }
+
+        function setFile(file) {
+            if (file.size > MAX_SIZE_BYTES) {
+                showStatus(`File exceeds maximum supported size of 2 GB (${formatBytes(file.size)}).`, 'error');
+                removeSelectedFile();
+                return;
+            }
+
+            selectedFile = file;
+            selectedFileName.textContent = file.name;
+            selectedFileSize.textContent = formatBytes(file.size);
+            selectedFileInfo.style.display = 'flex';
+            dropZone.style.display = 'none';
+            btnUpload.disabled = false;
+            statusMessage.textContent = '';
+        }
+
+        function removeSelectedFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            selectedFileInfo.style.display = 'none';
+            dropZone.style.display = 'block';
+            btnUpload.disabled = true;
+        }
 
         function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
+            if (bytes <= 0) return '0 B';
             const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showStatus(text, type) {
+            statusMessage.textContent = text;
+            statusMessage.className = `status-message status-${type}`;
         }
 
         function clearHistory() {
@@ -255,58 +590,14 @@
             return div.innerHTML;
         }
 
-        function extractCleanErrorMessage(responseText, status, statusText) {
-            if (!responseText) return `Server returned HTTP ${status}: ${statusText}`;
-
-            // Check if it's an HTML error page from IIS / ASP.NET
-            if (responseText.includes("<title>") && responseText.includes("</title>")) {
-                const match = responseText.match(/<title>(.*?)<\/title>/i);
-                if (match && match[1]) {
-                    return match[1].replace(/ - IIS.*$/, "").trim();
-                }
-            }
-
-            // If it's a short text response
-            if (responseText.length < 200) {
-                return responseText.replace(/<[^>]*>/g, '').trim();
-            }
-
-            if (status === 404 || status === 413) {
-                return "File size exceeds server transfer limit (2 GB).";
-            }
-
-            return `Server error (HTTP ${status})`;
-        }
-
         function transferFile() {
-            const fileInput = document.getElementById('fileInput');
-            const statusMessage = document.getElementById('statusMessage');
-            const btnDownload = document.getElementById('btnDownload');
-            const progressWrapper = document.getElementById('progressWrapper');
-            const progressBar = document.getElementById('progressBar');
-            const progressPercent = document.getElementById('progressPercent');
-            const progressDetails = document.getElementById('progressDetails');
+            if (!selectedFile) return;
 
-            if (fileInput.files.length === 0) {
-                statusMessage.style.color = "#dc2626";
-                statusMessage.textContent = "Please select a file first.";
-                return;
-            }
-
-            const file = fileInput.files[0];
-
-            // Validate against maximum 2 GB limit
-            if (file.size > MAX_SIZE_BYTES) {
-                statusMessage.style.color = "#dc2626";
-                statusMessage.textContent = `File exceeds maximum supported size of 2 GB (${formatBytes(file.size)}).`;
-                return;
-            }
-
+            const file = selectedFile;
             const fileName = file.name;
             const fileSize = formatBytes(file.size);
             const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            // Add pending row at top of history table
             const tbody = document.getElementById('historyBody');
             const emptyRow = document.getElementById('emptyRow');
             if (emptyRow) emptyRow.remove();
@@ -324,81 +615,88 @@
             const detailsCell = row.querySelector('.row-details');
             const badgeCell = row.cells[3];
 
-            // Initialize progress UI
-            progressWrapper.style.display = "block";
-            progressBar.style.width = "0%";
-            progressPercent.textContent = "0%";
+            progressWrapper.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
             progressDetails.textContent = `0 B / ${fileSize}`;
+            btnUpload.disabled = true;
+            showStatus('Uploading to server...', 'muted');
 
-            statusMessage.style.color = "#475569";
-            statusMessage.textContent = "Uploading to server...";
-            btnDownload.disabled = true;
+            uploadStartTime = performance.now();
+            lastLoaded = 0;
+            lastTime = uploadStartTime;
 
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append('file', file);
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', 'upload.ashx', true);
 
-            // Track upload progress
             xhr.upload.onprogress = function (event) {
                 if (event.lengthComputable) {
                     const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-                    progressBar.style.width = percent + "%";
-                    progressPercent.textContent = percent + "%";
-                    progressDetails.textContent = `${formatBytes(event.loaded)} / ${formatBytes(event.total)}`;
+                    const now = performance.now();
+                    const timeDiff = (now - lastTime) / 1000;
+
+                    let speedStr = '';
+                    if (timeDiff >= 0.5) {
+                        const bytesDiff = event.loaded - lastLoaded;
+                        const speedBps = bytesDiff / timeDiff;
+                        speedStr = ` • ${formatBytes(speedBps)}/s`;
+                        lastLoaded = event.loaded;
+                        lastTime = now;
+                    }
+
+                    progressBar.style.width = percent + '%';
+                    progressPercent.textContent = percent + '%';
+                    progressDetails.textContent = `${formatBytes(event.loaded)} / ${formatBytes(event.total)}${speedStr}`;
 
                     badgeCell.innerHTML = `<span class="badge badge-pending">${percent}%</span>`;
-                    detailsCell.textContent = `Uploading: ${formatBytes(event.loaded)} / ${formatBytes(event.total)}`;
+                    detailsCell.textContent = `Uploading (${percent}%)`;
                 }
             };
 
             xhr.onload = function () {
-                btnDownload.disabled = false;
-
-                const text = xhr.responseText || "";
-                const isSuccess = xhr.status >= 200 && xhr.status < 300 && text.startsWith("Success");
+                btnUpload.disabled = false;
+                const text = xhr.responseText || '';
+                const isSuccess = xhr.status === 200 && text.startsWith('Success');
 
                 if (isSuccess) {
-                    progressBar.style.width = "100%";
-                    progressPercent.textContent = "100%";
-                    statusMessage.style.color = "#16a34a";
-                    statusMessage.textContent = text;
-                    fileInput.value = ""; // Clear file picker
-
+                    progressBar.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    showStatus(text, 'success');
                     badgeCell.innerHTML = '<span class="badge badge-success">Success</span>';
-                    detailsCell.textContent = "Saved in downloads folder";
+                    detailsCell.textContent = 'Saved in downloads folder';
+                    removeSelectedFile();
 
-                    // Hide progress bar after 2 seconds on success
                     setTimeout(() => {
-                        progressWrapper.style.display = "none";
-                    }, 2500);
+                        progressWrapper.style.display = 'none';
+                    }, 3000);
                 } else {
-                    const errMsg = extractCleanErrorMessage(text, xhr.status, xhr.statusText);
-                    statusMessage.style.color = "#dc2626";
-                    statusMessage.textContent = `Error: ${errMsg}`;
-
+                    let errMsg = text;
+                    if (xhr.status === 404 || xhr.status === 413) {
+                        errMsg = 'File size exceeds server upload limits or ASP.NET handler not configured.';
+                    } else if (!errMsg) {
+                        errMsg = `Server error HTTP ${xhr.status}`;
+                    }
+                    showStatus(errMsg, 'error');
                     badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
                     detailsCell.textContent = errMsg;
                 }
             };
 
             xhr.onerror = function () {
-                btnDownload.disabled = false;
-                const errMsg = "Network or server connection failed.";
-                statusMessage.style.color = "#dc2626";
-                statusMessage.textContent = errMsg;
-
+                btnUpload.disabled = false;
+                const errMsg = 'Network or server connection failed.';
+                showStatus(errMsg, 'error');
                 badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
                 detailsCell.textContent = errMsg;
             };
 
             xhr.ontimeout = function () {
-                btnDownload.disabled = false;
-                const errMsg = "Upload timed out.";
-                statusMessage.style.color = "#dc2626";
-                statusMessage.textContent = errMsg;
-
+                btnUpload.disabled = false;
+                const errMsg = 'Upload timed out.';
+                showStatus(errMsg, 'error');
                 badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
                 detailsCell.textContent = errMsg;
             };
