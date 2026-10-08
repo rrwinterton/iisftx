@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Transfer to Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 30px;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .card {
+            max-width: 760px;
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        .upload-container {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 10px 0;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            flex: 1;
+            border: 1px solid #cbd5e1;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button#btnDownload {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background 0.15s ease;
+        }
+
+        button#btnDownload:hover {
+            background: #1d4ed8;
+        }
+
+        button#btnDownload:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* Progress Bar Styles */
+        .progress-wrapper {
+            display: none;
+            margin: 14px 0 10px 0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .progress-track {
+            background-color: #e2e8f0;
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #38bdf8);
+            border-radius: 8px;
+            transition: width 0.1s ease;
+        }
+
+        #statusMessage {
+            font-size: 14px;
+            font-weight: 500;
+            margin: 10px 0 25px 0;
+            min-height: 20px;
+        }
+
+        /* History Table Styles */
+        .history-section {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            color: #0f172a;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0;
+        }
+
+        .clear-btn:hover {
+            color: #0f172a;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 8px 12px;
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .history-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .history-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-failed {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .badge-pending {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>Select a File to Transfer</h2>
+
+        <div class="upload-container">
+            <input type="file" id="fileInput">
+            <button id="btnDownload" onclick="transferFile()">Download</button>
+        </div>
+
+        <!-- Live Progress Indicator -->
+        <div class="progress-wrapper" id="progressWrapper">
+            <div class="progress-header">
+                <span id="progressPercent">0%</span>
+                <span id="progressDetails">0 B / 0 B</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+
+        <p id="statusMessage"></p>
+
+        <div class="history-section">
+            <div class="history-header">
+                <h3 class="history-title">Transfer History</h3>
+                <button class="clear-btn" onclick="clearHistory()">Clear History</button>
+            </div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th style="width: 85px;">Time</th>
+                        <th>File Name</th>
+                        <th style="width: 75px;">Size</th>
+                        <th style="width: 95px;">Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr id="emptyRow">
+                        <td colspan="5" class="empty-history">No transfers recorded yet.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB limit
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function clearHistory() {
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '<tr id="emptyRow"><td colspan="5" class="empty-history">No transfers recorded yet.</td></tr>';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function extractCleanErrorMessage(responseText, status, statusText) {
+            if (!responseText) return `Server returned HTTP ${status}: ${statusText}`;
+
+            // Check if it's an HTML error page from IIS / ASP.NET
+            if (responseText.includes("<title>") && responseText.includes("</title>")) {
+                const match = responseText.match(/<title>(.*?)<\/title>/i);
+                if (match && match[1]) {
+                    return match[1].replace(/ - IIS.*$/, "").trim();
+                }
+            }
+
+            // If it's a short text response
+            if (responseText.length < 200) {
+                return responseText.replace(/<[^>]*>/g, '').trim();
+            }
+
+            if (status === 404 || status === 413) {
+                return "File size exceeds server transfer limit (2 GB).";
+            }
+
+            return `Server error (HTTP ${status})`;
+        }
+
+        function transferFile() {
+            const fileInput = document.getElementById('fileInput');
+            const statusMessage = document.getElementById('statusMessage');
+            const btnDownload = document.getElementById('btnDownload');
+            const progressWrapper = document.getElementById('progressWrapper');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressDetails = document.getElementById('progressDetails');
+
+            if (fileInput.files.length === 0) {
+                statusMessage.style.color = "#dc2626";
+                statusMessage.textContent = "Please select a file first.";
+                return;
+            }
+
+            const file = fileInput.files[0];
+
+            // Validate against maximum 2 GB limit
+            if (file.size > MAX_SIZE_BYTES) {
+                statusMessage.style.color = "#dc2626";
+                statusMessage.textContent = `File exceeds maximum supported size of 2 GB (${formatBytes(file.size)}).`;
+                return;
+            }
+
+            const fileName = file.name;
+            const fileSize = formatBytes(file.size);
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // Add pending row at top of history table
+            const tbody = document.getElementById('historyBody');
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.remove();
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${timeStr}</td>
+                <td><strong>${escapeHtml(fileName)}</strong></td>
+                <td>${fileSize}</td>
+                <td><span class="badge badge-pending">0%</span></td>
+                <td class="row-details">Starting upload...</td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+
+            const detailsCell = row.querySelector('.row-details');
+            const badgeCell = row.cells[3];
+
+            // Initialize progress UI
+            progressWrapper.style.display = "block";
+            progressBar.style.width = "0%";
+            progressPercent.textContent = "0%";
+            progressDetails.textContent = `0 B / ${fileSize}`;
+
+            statusMessage.style.color = "#475569";
+            statusMessage.textContent = "Uploading to server...";
+            btnDownload.disabled = true;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'upload.ashx', true);
+
+            // Track upload progress
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+                    progressBar.style.width = percent + "%";
+                    progressPercent.textContent = percent + "%";
+                    progressDetails.textContent = `${formatBytes(event.loaded)} / ${formatBytes(event.total)}`;
+
+                    badgeCell.innerHTML = `<span class="badge badge-pending">${percent}%</span>`;
+                    detailsCell.textContent = `Uploading: ${formatBytes(event.loaded)} / ${formatBytes(event.total)}`;
+                }
+            };
+
+            xhr.onload = function () {
+                btnDownload.disabled = false;
+
+                const text = xhr.responseText || "";
+                const isSuccess = xhr.status >= 200 && xhr.status < 300 && text.startsWith("Success");
+
+                if (isSuccess) {
+                    progressBar.style.width = "100%";
+                    progressPercent.textContent = "100%";
+                    statusMessage.style.color = "#16a34a";
+                    statusMessage.textContent = text;
+                    fileInput.value = ""; // Clear file picker
+
+                    badgeCell.innerHTML = '<span class="badge badge-success">Success</span>';
+                    detailsCell.textContent = "Saved in downloads folder";
+
+                    // Hide progress bar after 2 seconds on success
+                    setTimeout(() => {
+                        progressWrapper.style.display = "none";
+                    }, 2500);
+                } else {
+                    const errMsg = extractCleanErrorMessage(text, xhr.status, xhr.statusText);
+                    statusMessage.style.color = "#dc2626";
+                    statusMessage.textContent = `Error: ${errMsg}`;
+
+                    badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
+                    detailsCell.textContent = errMsg;
+                }
+            };
+
+            xhr.onerror = function () {
+                btnDownload.disabled = false;
+                const errMsg = "Network or server connection failed.";
+                statusMessage.style.color = "#dc2626";
+                statusMessage.textContent = errMsg;
+
+                badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
+                detailsCell.textContent = errMsg;
+            };
+
+            xhr.ontimeout = function () {
+                btnDownload.disabled = false;
+                const errMsg = "Upload timed out.";
+                statusMessage.style.color = "#dc2626";
+                statusMessage.textContent = errMsg;
+
+                badgeCell.innerHTML = '<span class="badge badge-failed">Failed</span>';
+                detailsCell.textContent = errMsg;
+            };
+
+            xhr.send(formData);
+        }
+    </script>
+</body>
+
+</html>
